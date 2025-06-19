@@ -332,7 +332,7 @@ export function ArticleForm({ onSubmit, initialData, isLoading = false }: Articl
             <FormItem>
               <FormLabel>Author Name (Optional)</FormLabel>
               <FormControl>
-                <Input placeholder="Author's name" {...field} disabled={currentLoadingState} defaultValue="Deepak bagada" />
+                <Input placeholder="Author's name" {...field} disabled={currentLoadingState} />
               </FormControl>
               <FormMessage />
             </FormItem>
