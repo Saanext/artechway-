@@ -1,3 +1,4 @@
+
 import { getArticleBySlug, getArticles } from '@/lib/firestore';
 import type { Article } from '@/lib/types';
 import { notFound } from 'next/navigation';
@@ -6,9 +7,9 @@ import ArticleContent from '@/components/blog/ArticleContent';
 import ShareButtons from '@/components/blog/ShareButtons';
 import Summarizer from '@/components/blog/Summarizer';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { CalendarDays, UserCircle } from 'lucide-react';
+import { CalendarDays, FolderArchive } from 'lucide-react'; // Changed UserCircle to FolderArchive for category
 import { format } from 'date-fns';
-import { Badge } from '@/components/ui/badge'; // Assuming Badge component exists
+import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import ArticleCard from '@/components/blog/ArticleCard';
 
@@ -30,6 +31,7 @@ export async function generateMetadata({ params }: ArticlePageProps) {
   return {
     title: `${article.title} | Artechway`,
     description: article.excerpt || article.content.substring(0, 160),
+    keywords: article.category ? [article.category, article.title] : [article.title],
     openGraph: {
         title: article.title,
         description: article.excerpt || article.content.substring(0, 160),
@@ -40,6 +42,7 @@ export async function generateMetadata({ params }: ArticlePageProps) {
           publishedTime: article.createdAt.toDate().toISOString(),
           modifiedTime: article.updatedAt.toDate().toISOString(),
           authors: article.authorName ? [article.authorName] : [],
+          section: article.category, // Added category here
         },
     },
     twitter: {
@@ -53,13 +56,13 @@ export async function generateMetadata({ params }: ArticlePageProps) {
 
 // For static site generation
 export async function generateStaticParams() {
-  const articles = await getArticles(50); // Fetch a reasonable number of articles for SSG
+  const articles = await getArticles(50); 
   return articles.map((article) => ({
     slug: article.slug,
   }));
 }
 
-export const revalidate = 3600; // Revalidate article pages every hour
+export const revalidate = 3600; 
 
 export default async function ArticlePage({ params }: ArticlePageProps) {
   const article = await getArticleBySlug(params.slug);
@@ -68,28 +71,34 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
     notFound();
   }
 
-  const relatedArticles = (await getArticles(4))
-                            .filter(a => a.id !== article.id)
-                            .slice(0,3); // Fetch 3 other articles
+  const relatedArticles = (await getArticles(4, true)) // Ensure related articles are published
+                            .filter(a => a.id !== article.id && a.category === article.category) // prefer same category
+                            .slice(0,3); 
 
   const getInitials = (name: string | null | undefined) => {
-    if (!name) return "AA"; // Artechway Author
+    if (!name) return "AA"; 
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
   };
 
-  const currentUrl = `https://artechway.com/article/${article.slug}`; // Replace with actual domain later
+  const currentUrl = `https://artechway.com/article/${article.slug}`; 
 
   return (
     <div className="max-w-4xl mx-auto py-8 px-4">
       <article className="bg-card p-6 sm:p-8 md:p-12 rounded-lg shadow-xl space-y-8">
         <header className="space-y-4">
+           {article.category && (
+            <Badge variant="secondary" className="mb-2 inline-flex items-center">
+              <FolderArchive className="h-3.5 w-3.5 mr-1.5" />
+              {article.category}
+            </Badge>
+          )}
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-headline font-bold text-primary leading-tight">
             {article.title}
           </h1>
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-muted-foreground">
             <div className="flex items-center">
               <Avatar className="h-8 w-8 mr-2">
-                <AvatarImage src={undefined /* Placeholder for author image if available */} alt={article.authorName || "Artechway"} />
+                <AvatarImage src={undefined} alt={article.authorName || "Artechway"} />
                 <AvatarFallback>{getInitials(article.authorName)}</AvatarFallback>
               </Avatar>
               <span>{article.authorName || 'Artechway Team'}</span>
@@ -138,3 +147,4 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
     </div>
   );
 }
+

@@ -1,3 +1,4 @@
+
 import type { Timestamp } from 'firebase/firestore';
 
 export interface Article {
@@ -7,6 +8,7 @@ export interface Article {
   content: string; // HTML or Markdown content
   createdAt: Timestamp;
   updatedAt: Timestamp;
+  category: "AI" | "Web Development" | "Social Media Marketing" | string; // Add other categories as needed, or keep strict
   authorName?: string;
   excerpt?: string; 
   isPublished?: boolean;
@@ -19,3 +21,4 @@ export interface UserProfile {
   displayName: string | null;
   // Add any other user-specific fields you might need
 }
+

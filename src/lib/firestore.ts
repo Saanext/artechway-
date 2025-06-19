@@ -1,4 +1,5 @@
 
+
 import { db } from './firebase';
 import {
   collection,
@@ -30,7 +31,7 @@ export async function addArticle(articleData: Omit<Article, 'id' | 'createdAt' |
   }
 
   const newArticleRef = await addDoc(collection(db, ARTICLES_COLLECTION), {
-    ...articleData,
+    ...articleData, // category will be included here if present in articleData
     slug,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
@@ -43,12 +44,8 @@ export async function getArticles(count?: number, publishedOnly: boolean = true)
   let articlesQuery;
 
   if (publishedOnly) {
-    // Query for published articles. Sorting by createdAt will be done in code.
-    // This relies on a single-field index on 'isPublished' or automatic indexing.
     articlesQuery = query(collection(db, ARTICLES_COLLECTION), where('isPublished', '==', true));
   } else {
-    // Query for all articles, sorted by createdAt by Firestore.
-    // This relies on a single-field index on 'createdAt' or automatic indexing.
     articlesQuery = query(collection(db, ARTICLES_COLLECTION), orderBy('createdAt', 'desc'));
   }
   
@@ -59,14 +56,12 @@ export async function getArticles(count?: number, publishedOnly: boolean = true)
   } as Article));
 
   if (publishedOnly) {
-    // Sort published articles by createdAt descending in application code
     articles.sort((a, b) => {
-      const timeA = a.createdAt instanceof Timestamp ? a.createdAt.toMillis() : 0;
-      const timeB = b.createdAt instanceof Timestamp ? b.createdAt.toMillis() : 0;
+      const timeA = a.createdAt instanceof Timestamp ? a.createdAt.toMillis() : Date.parse(a.createdAt as unknown as string);
+      const timeB = b.createdAt instanceof Timestamp ? b.createdAt.toMillis() : Date.parse(b.createdAt as unknown as string);
       return timeB - timeA;
     });
   }
-  // If !publishedOnly, Firestore already handled sorting by createdAt
 
   if (count) {
     articles = articles.slice(0, count);
@@ -85,7 +80,6 @@ export async function getArticleById(id: string): Promise<Article | null> {
 }
 
 export async function getArticleBySlug(slug: string): Promise<Article | null> {
-  // Query by slug first. This requires a single-field index on 'slug'.
   const q = query(collection(db, ARTICLES_COLLECTION), where('slug', '==', slug), firestoreLimit(1));
   const querySnapshot = await getDocs(q);
 
@@ -93,7 +87,6 @@ export async function getArticleBySlug(slug: string): Promise<Article | null> {
     const docSnap = querySnapshot.docs[0];
     const article = { id: docSnap.id, ...docSnap.data() } as Article;
     
-    // Check if the article is published in application code.
     if (article.isPublished) {
       return article;
     }
@@ -104,7 +97,7 @@ export async function getArticleBySlug(slug: string): Promise<Article | null> {
 export async function updateArticle(id: string, articleData: Partial<Omit<Article, 'id' | 'createdAt' | 'updatedAt'>>): Promise<void> {
   const docRef = doc(db, ARTICLES_COLLECTION, id);
   
-  const updateData: any = { ...articleData, updatedAt: serverTimestamp() };
+  const updateData: any = { ...articleData, updatedAt: serverTimestamp() }; // category will be included here if present in articleData
   if (articleData.title && !articleData.slug) { 
      updateData.slug = slugify(articleData.title);
   } else if (articleData.slug) {
@@ -118,3 +111,4 @@ export async function deleteArticle(id: string): Promise<void> {
   const docRef = doc(db, ARTICLES_COLLECTION, id);
   await deleteDoc(docRef);
 }
+

@@ -1,9 +1,10 @@
+
 import Link from 'next/link';
 import Image from 'next/image';
 import type { Article } from '@/lib/types';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { CalendarDays, UserCircle, ArrowRight } from 'lucide-react';
+import { CalendarDays, UserCircle, ArrowRight, FolderArchive } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface ArticleCardProps {
@@ -16,18 +17,26 @@ export default function ArticleCard({ article }: ArticleCardProps) {
   return (
     <Link href={`/article/${article.slug}`} className="block group">
       <Card className="h-full flex flex-col overflow-hidden transition-all duration-300 ease-in-out hover:shadow-xl hover:border-primary/50">
-        {article.coverImageUrl && (
-          <div className="relative w-full h-48 overflow-hidden">
-            <Image
-              src={article.coverImageUrl || "https://placehold.co/600x400.png"}
-              alt={article.title}
-              fill
-              style={{ objectFit: 'cover' }}
-              className="transition-transform duration-500 ease-in-out group-hover:scale-110"
-              data-ai-hint="technology blog"
-            />
-          </div>
-        )}
+        <div className="relative"> 
+          {article.coverImageUrl && (
+            <div className="relative w-full h-48 overflow-hidden">
+              <Image
+                src={article.coverImageUrl || "https://placehold.co/600x400.png"}
+                alt={article.title}
+                fill
+                style={{ objectFit: 'cover' }}
+                className="transition-transform duration-500 ease-in-out group-hover:scale-110"
+                data-ai-hint="technology blog"
+              />
+            </div>
+          )}
+          {article.category && (
+             <Badge variant="secondary" className="absolute top-2 right-2 bg-background/80 backdrop-blur-sm text-xs py-1 px-2 shadow">
+                <FolderArchive className="h-3 w-3 mr-1"/>
+                {article.category}
+            </Badge>
+          )}
+        </div>
         <CardHeader className="pb-2">
           <CardTitle className="text-xl font-headline leading-tight group-hover:text-primary transition-colors">
             {article.title}
@@ -60,3 +69,4 @@ export default function ArticleCard({ article }: ArticleCardProps) {
     </Link>
   );
 }
+

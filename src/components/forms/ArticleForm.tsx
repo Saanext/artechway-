@@ -1,3 +1,4 @@
+
 "use client";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -7,14 +8,20 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Article } from "@/lib/types";
 import { slugify } from "@/utils/slugify";
 import { useEffect } from "react";
+
+const categories = ["AI", "Web Development", "Social Media Marketing"] as const;
 
 const articleFormSchema = z.object({
   title: z.string().min(5, { message: "Title must be at least 5 characters." }).max(150),
   slug: z.string().optional(),
   content: z.string().min(100, { message: "Content must be at least 100 characters." }),
+  category: z.enum(categories, {
+    required_error: "You need to select a category.",
+  }),
   authorName: z.string().optional(),
   excerpt: z.string().max(300, { message: "Excerpt cannot exceed 300 characters." }).optional(),
   isPublished: z.boolean().default(true),
@@ -36,6 +43,7 @@ export function ArticleForm({ onSubmit, initialData, isLoading = false }: Articl
       title: initialData?.title || "",
       slug: initialData?.slug || "",
       content: initialData?.content || "",
+      category: initialData?.category || categories[0], // Default to first category or existing
       authorName: initialData?.authorName || "Artechway Admin",
       excerpt: initialData?.excerpt || "",
       isPublished: initialData?.isPublished === undefined ? true : initialData.isPublished,
@@ -46,14 +54,13 @@ export function ArticleForm({ onSubmit, initialData, isLoading = false }: Articl
   const watchedTitle = form.watch("title");
 
   useEffect(() => {
-    if (watchedTitle && !form.getValues("slug") && !initialData?.slug) { // Auto-generate slug only if slug field is empty and not editing an existing slug
+    if (watchedTitle && !form.getValues("slug") && !initialData?.slug) { 
       form.setValue("slug", slugify(watchedTitle), { shouldValidate: true, shouldDirty: true });
     }
   }, [watchedTitle, form, initialData?.slug]);
 
 
   const handleSubmit = async (data: ArticleFormData) => {
-    // Ensure slug is generated if empty
     const finalData = {
       ...data,
       slug: data.slug ? slugify(data.slug) : slugify(data.title),
@@ -89,6 +96,32 @@ export function ArticleForm({ onSubmit, initialData, isLoading = false }: Articl
                 <Input placeholder="article-url-slug" {...field} onChange={(e) => field.onChange(slugify(e.target.value))} disabled={isLoading}/>
               </FormControl>
               <FormDescription>URL-friendly version of the title. Auto-generated if left empty. Customize if needed.</FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="category"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Category</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLoading}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a category" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {categories.map((category) => (
+                    <SelectItem key={category} value={category}>
+                      {category}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormDescription>Choose the category that best fits your article.</FormDescription>
               <FormMessage />
             </FormItem>
           )}
@@ -184,3 +217,4 @@ export function ArticleForm({ onSubmit, initialData, isLoading = false }: Articl
     </Form>
   );
 }
+
