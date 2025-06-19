@@ -1,3 +1,4 @@
+
 "use client";
 import React, { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
@@ -89,7 +90,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <SidebarContent>
           <SidebarMenu>
             <SidebarMenuItem>
-              <Link href="/admin" legacyBehavior passHref>
+              <Link href="/admin">
                 <SidebarMenuButton isActive={pathname === '/admin'} tooltip="Dashboard">
                   <LayoutDashboard />
                   <span>Dashboard</span>
@@ -97,7 +98,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               </Link>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <Link href="/admin/new" legacyBehavior passHref>
+              <Link href="/admin/new">
                 <SidebarMenuButton isActive={pathname === '/admin/new'} tooltip="New Article">
                   <FilePlus />
                   <span>New Article</span>
@@ -105,7 +106,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               </Link>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <Link href="/admin/suggest-topics" legacyBehavior passHref>
+              <Link href="/admin/suggest-topics">
                 <SidebarMenuButton isActive={pathname === '/admin/suggest-topics'} tooltip="Suggest Topics">
                   <Lightbulb />
                   <span>Suggest Topics</span>
