@@ -17,6 +17,7 @@ import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import Image from "next/image";
 import { Progress } from "@/components/ui/progress";
 import { XCircle } from "lucide-react";
+import { Label } from "@/components/ui/label"; // Added import for Label
 
 const categories = ["AI", "Web Development", "Social Media Marketing"] as const;
 
