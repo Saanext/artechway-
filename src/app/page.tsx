@@ -1,4 +1,5 @@
-import { getArticles } from '@/lib/firestore';
+
+import { getArticles } from '@/lib/articles'; // Updated import
 import type { Article } from '@/lib/types';
 import ArticleCard from '@/components/blog/ArticleCard';
 import Image from 'next/image';
@@ -6,17 +7,16 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ArrowRight } from 'lucide-react';
 
-export const revalidate = 60; // Revalidate every 60 seconds
+export const revalidate = 60; 
 
 export default async function HomePage() {
-  const articles = await getArticles(10); // Fetch latest 10 articles
+  const articles = await getArticles(10); 
 
   const featuredArticle = articles.length > 0 ? articles[0] : null;
-  const otherArticles = articles.length > 1 ? articles.slice(1, 5) : []; // Next 4 articles
+  const otherArticles = articles.length > 1 ? articles.slice(1, 5) : []; 
 
   return (
     <div className="space-y-16 py-8">
-      {/* Hero Section - Welcome */}
       <section className="text-center py-12 bg-gradient-to-r from-primary/10 via-background to-accent/10 rounded-xl shadow-sm">
         <h1 className="text-5xl md:text-6xl font-headline font-extrabold mb-6 text-primary">
           Welcome to Artechway
@@ -31,16 +31,15 @@ export default async function HomePage() {
         </Button>
       </section>
 
-      {/* Featured Article Section */}
       {featuredArticle && (
         <section id="featured-article" className="mb-16">
           <h2 className="text-3xl font-headline font-bold mb-8 text-center text-primary">Featured Article</h2>
           <Link href={`/article/${featuredArticle.slug}`} className="block group">
             <div className="bg-card rounded-lg shadow-xl overflow-hidden transition-all duration-300 ease-in-out group-hover:shadow-2xl group-hover:scale-[1.02]">
-              {featuredArticle.coverImageUrl && (
+              {featuredArticle.cover_image_url && (
                  <div className="w-full h-64 md:h-96 relative overflow-hidden">
                     <Image
-                      src={featuredArticle.coverImageUrl || "https://placehold.co/1200x600.png"}
+                      src={featuredArticle.cover_image_url || "https://placehold.co/1200x600.png"}
                       alt={featuredArticle.title}
                       fill
                       style={{ objectFit: 'cover' }}
@@ -64,7 +63,6 @@ export default async function HomePage() {
         </section>
       )}
 
-      {/* Latest Articles Grid */}
       {otherArticles.length > 0 && (
         <section id="latest-articles">
           <h2 className="text-3xl font-headline font-bold mb-8 text-center">Latest Articles</h2>

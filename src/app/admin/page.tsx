@@ -1,7 +1,8 @@
+
 "use client";
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { getArticles, deleteArticle } from '@/lib/firestore';
+import { getArticles, deleteArticle } from '@/lib/articles'; // Updated import
 import type { Article } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -17,10 +18,10 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  const fetchArticles = async () => {
+  const fetchArticlesData = async () => {
     setLoading(true);
     try {
-      const fetchedArticles = await getArticles(undefined, false); // Fetch all articles, including unpublished
+      const fetchedArticles = await getArticles(undefined, false); 
       setArticles(fetchedArticles);
     } catch (error) {
       console.error("Error fetching articles:", error);
@@ -31,14 +32,14 @@ export default function AdminDashboardPage() {
   };
 
   useEffect(() => {
-    fetchArticles();
+    fetchArticlesData();
   }, []);
 
   const handleDelete = async (id: string) => {
     try {
       await deleteArticle(id);
       toast({ title: "Success", description: "Article deleted successfully." });
-      fetchArticles(); // Refresh list
+      fetchArticlesData(); 
     } catch (error) {
       console.error("Error deleting article:", error);
       toast({ title: "Error", description: "Could not delete article.", variant: "destructive" });
@@ -96,13 +97,13 @@ export default function AdminDashboardPage() {
                       </Link>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={article.isPublished ? "default" : "secondary"} className={article.isPublished ? "bg-green-500 hover:bg-green-600" : "bg-yellow-500 hover:bg-yellow-600"}>
-                        {article.isPublished ? <Eye className="mr-1 h-3 w-3"/> : <EyeOff className="mr-1 h-3 w-3" />}
-                        {article.isPublished ? 'Published' : 'Draft'}
+                      <Badge variant={article.is_published ? "default" : "secondary"} className={article.is_published ? "bg-green-500 hover:bg-green-600" : "bg-yellow-500 hover:bg-yellow-600"}>
+                        {article.is_published ? <Eye className="mr-1 h-3 w-3"/> : <EyeOff className="mr-1 h-3 w-3" />}
+                        {article.is_published ? 'Published' : 'Draft'}
                       </Badge>
                     </TableCell>
-                    <TableCell>{article.createdAt ? format(article.createdAt.toDate(), 'MMM dd, yyyy') : 'N/A'}</TableCell>
-                    <TableCell>{article.updatedAt ? format(article.updatedAt.toDate(), 'MMM dd, yyyy') : 'N/A'}</TableCell>
+                    <TableCell>{article.created_at ? format(new Date(article.created_at), 'MMM dd, yyyy') : 'N/A'}</TableCell>
+                    <TableCell>{article.updated_at ? format(new Date(article.updated_at), 'MMM dd, yyyy') : 'N/A'}</TableCell>
                     <TableCell className="text-right space-x-2">
                       <Button variant="outline" size="sm" asChild title="Edit Article">
                         <Link href={`/admin/edit/${article.id}`}>

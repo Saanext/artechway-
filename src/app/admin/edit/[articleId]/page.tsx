@@ -1,8 +1,9 @@
+
 "use client";
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { ArticleForm, type ArticleFormData } from '@/components/forms/ArticleForm';
-import { getArticleById, updateArticle } from '@/lib/firestore';
+import { getArticleById, updateArticle } from '@/lib/articles'; // Updated import
 import type { Article } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -37,10 +38,10 @@ export default function EditArticlePage() {
     }
   }, [articleId, router, toast]);
 
-  const handleSubmit = async (data: ArticleFormData) => {
+  const handleSubmit = async (data: ArticleFormData) => { // data is from react-hook-form (camelCase for some fields)
     setIsLoading(true);
     try {
-      await updateArticle(articleId, data);
+      await updateArticle(articleId, data); // updateArticle will handle mapping
       toast({ title: "Success", description: "Article updated successfully." });
       router.push('/admin');
     } catch (error: any) {
@@ -76,11 +77,10 @@ export default function EditArticlePage() {
     return <p>Article not found or error loading data.</p>; 
   }
 
+  // Pass snake_case initialData (from `article`) to ArticleForm
   return (
     <Card className="shadow-lg">
       <CardHeader>
-        {/* Title is already in AdminLayout */}
-        {/* <CardTitle className="text-2xl font-headline">Edit Article</CardTitle> */}
         <CardDescription>Update the details for your article "{article.title}".</CardDescription>
       </CardHeader>
       <CardContent>

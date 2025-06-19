@@ -18,10 +18,10 @@ export default function ArticleCard({ article }: ArticleCardProps) {
     <Link href={`/article/${article.slug}`} className="block group">
       <Card className="h-full flex flex-col overflow-hidden transition-all duration-300 ease-in-out hover:shadow-xl hover:border-primary/50">
         <div className="relative"> 
-          {article.coverImageUrl && (
+          {article.cover_image_url && (
             <div className="relative w-full h-48 overflow-hidden">
               <Image
-                src={article.coverImageUrl || "https://placehold.co/600x400.png"}
+                src={article.cover_image_url || "https://placehold.co/600x400.png"}
                 alt={article.title}
                 fill
                 style={{ objectFit: 'cover' }}
@@ -47,15 +47,15 @@ export default function ArticleCard({ article }: ArticleCardProps) {
             {displayExcerpt}
           </p>
           <div className="flex items-center text-xs text-muted-foreground space-x-3">
-            {article.authorName && (
+            {article.author_name && (
               <span className="flex items-center">
-                <UserCircle className="h-3.5 w-3.5 mr-1" /> {article.authorName}
+                <UserCircle className="h-3.5 w-3.5 mr-1" /> {article.author_name}
               </span>
             )}
-            {article.createdAt && (
+            {article.created_at && (
               <span className="flex items-center">
                 <CalendarDays className="h-3.5 w-3.5 mr-1" />
-                {format(article.createdAt.toDate(), 'MMM dd, yyyy')}
+                {format(new Date(article.created_at), 'MMM dd, yyyy')}
               </span>
             )}
           </div>
@@ -69,4 +69,3 @@ export default function ArticleCard({ article }: ArticleCardProps) {
     </Link>
   );
 }
-

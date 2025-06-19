@@ -9,18 +9,18 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { Article } from "@/lib/types";
+import type { Article, ArticleFormData as AppArticleFormData } from "@/lib/types"; // Renamed to avoid conflict
 import { slugify } from "@/utils/slugify";
 import { useEffect, useState } from "react";
-import { storage } from "@/lib/firebase"; // Import storage
-import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
+import { supabase } from "@/lib/supabase";
 import Image from "next/image";
 import { Progress } from "@/components/ui/progress";
 import { XCircle } from "lucide-react";
-import { Label } from "@/components/ui/label"; // Added import for Label
+import { Label } from "@/components/ui/label";
 
 const categories = ["AI", "Web Development", "Social Media Marketing"] as const;
 
+// Form schema uses camelCase for easier react-hook-form binding
 const articleFormSchema = z.object({
   title: z.string().min(5, { message: "Title must be at least 5 characters." }).max(150),
   slug: z.string().optional(),
@@ -31,39 +31,40 @@ const articleFormSchema = z.object({
   authorName: z.string().optional(),
   excerpt: z.string().max(300, { message: "Excerpt cannot exceed 300 characters." }).optional(),
   isPublished: z.boolean().default(true),
-  coverImageUrl: z.string().url({ message: "Please enter a valid URL." }).optional().or(z.literal('')),
+  coverImageUrl: z.string().url({ message: "Please enter a valid URL." }).optional().or(z.literal('')), // This will hold URL or be empty if file is selected
 });
 
-export type ArticleFormData = z.infer<typeof articleFormSchema>;
+export type ArticleFormData = z.infer<typeof articleFormSchema>; // This is the type for react-hook-form
 
 interface ArticleFormProps {
-  onSubmit: (data: ArticleFormData) => Promise<void>;
-  initialData?: Partial<Article>;
+  onSubmit: (data: AppArticleFormData) => Promise<void>; // Expects our AppArticleFormData which includes snake_case for DB
+  initialData?: Partial<Article>; // Article type from Supabase (snake_case)
   isLoading?: boolean;
 }
 
 export function ArticleForm({ onSubmit, initialData, isLoading = false }: ArticleFormProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(initialData?.coverImageUrl || null);
+  // initialData comes from Supabase (snake_case), map to form's camelCase
+  const [imagePreview, setImagePreview] = useState<string | null>(initialData?.cover_image_url || null);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
-  const form = useForm<ArticleFormData>({
+  const form = useForm<ArticleFormData>({ // react-hook-form uses ArticleFormData (camelCase)
     resolver: zodResolver(articleFormSchema),
     defaultValues: {
       title: initialData?.title || "",
       slug: initialData?.slug || "",
       content: initialData?.content || "",
       category: initialData?.category || categories[0],
-      authorName: initialData?.authorName || "Deepak bagada",
+      authorName: initialData?.author_name || "Deepak bagada",
       excerpt: initialData?.excerpt || "",
-      isPublished: initialData?.isPublished === undefined ? true : initialData.isPublished,
-      coverImageUrl: initialData?.coverImageUrl || "",
+      isPublished: initialData?.is_published === undefined ? true : initialData.is_published,
+      coverImageUrl: initialData?.cover_image_url || "",
     },
   });
 
   const watchedTitle = form.watch("title");
-  const watchedCoverImageUrl = form.watch("coverImageUrl");
+  const watchedCoverImageUrl = form.watch("coverImageUrl"); // camelCase from form
 
   useEffect(() => {
     if (watchedTitle && !form.getValues("slug") && !initialData?.slug) {
@@ -72,7 +73,6 @@ export function ArticleForm({ onSubmit, initialData, isLoading = false }: Articl
   }, [watchedTitle, form, initialData?.slug]);
 
   useEffect(() => {
-    // If a URL is manually entered and no file is selected, update preview
     if (watchedCoverImageUrl && !selectedFile) {
       setImagePreview(watchedCoverImageUrl);
     }
@@ -82,7 +82,7 @@ export function ArticleForm({ onSubmit, initialData, isLoading = false }: Articl
     const file = event.target.files?.[0];
     if (file) {
       setSelectedFile(file);
-      form.setValue("coverImageUrl", ""); // Clear URL field if file is selected
+      form.setValue("coverImageUrl", ""); 
       const reader = new FileReader();
       reader.onloadend = () => {
         setImagePreview(reader.result as string);
@@ -95,65 +95,85 @@ export function ArticleForm({ onSubmit, initialData, isLoading = false }: Articl
     setSelectedFile(null);
     setImagePreview(null);
     form.setValue("coverImageUrl", ""); 
-    // If there's an initial image URL, revert to that if needed, or just clear
-    if (initialData?.coverImageUrl && initialData.coverImageUrl !== form.getValues("coverImageUrl")) {
-       // This part can be complex if we want to revert to initialData.coverImageUrl after clearing a newly selected file.
-       // For now, clearing is simple.
+    if (initialData?.cover_image_url && initialData.cover_image_url !== form.getValues("coverImageUrl")) {
+      // Potentially revert to initialData.cover_image_url if needed
     }
     const fileInput = document.getElementById('coverImageFile') as HTMLInputElement | null;
     if (fileInput) {
-      fileInput.value = ""; // Reset file input
+      fileInput.value = "";
     }
   };
 
-  const handleSubmit = async (data: ArticleFormData) => {
-    let finalData = { ...data };
-    finalData.slug = data.slug ? slugify(data.slug) : slugify(data.title);
+  const handleSubmitWithUpload = async (formData: ArticleFormData) => { // formData is camelCase from react-hook-form
+    let finalCoverImageUrl = formData.coverImageUrl; // URL from input or initial data
 
     if (selectedFile) {
       setIsUploading(true);
       setUploadProgress(0);
-      const storageRef = ref(storage, `article_covers/${Date.now()}_${selectedFile.name}`);
-      const uploadTask = uploadBytesResumable(storageRef, selectedFile);
+      const fileName = `${Date.now()}_${selectedFile.name}`;
+      const filePath = `article_covers/${fileName}`;
 
-      return new Promise<void>((resolve, reject) => {
-        uploadTask.on(
-          "state_changed",
-          (snapshot) => {
-            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-            setUploadProgress(progress);
-          },
-          (error) => {
-            console.error("Upload failed:", error);
-            setIsUploading(false);
-            setUploadProgress(null);
-            // Optionally, show a toast error
-            form.setError("coverImageUrl", { type: "manual", message: "Image upload failed. Please try again." });
-            reject(error);
-          },
-          async () => {
-            try {
-              const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-              finalData.coverImageUrl = downloadURL;
-              await onSubmit(finalData);
-              setIsUploading(false);
-              setUploadProgress(null);
-              setSelectedFile(null); 
-              // setImagePreview(downloadURL); // Keep preview or clear?
-              resolve();
-            } catch (error) {
-              console.error("Failed to get download URL or submit form:", error);
-              setIsUploading(false);
-              setUploadProgress(null);
-              form.setError("coverImageUrl", { type: "manual", message: "Processing after upload failed." });
-              reject(error);
-            }
-          }
-        );
-      });
-    } else {
-      // If no file selected, use the coverImageUrl from the form (could be initial or manually entered)
-      return onSubmit(finalData);
+      const { error: uploadError } = await supabase.storage
+        .from('article_covers') // Make sure this bucket exists and has public access or use signed URLs
+        .upload(filePath, selectedFile, {
+          cacheControl: '3600',
+          upsert: false,
+          //contentType: selectedFile.type // Supabase client usually infers this
+        });
+      
+      // Simulating progress for Supabase (actual progress needs event listeners if supported or custom logic)
+      // For simplicity, we'll just set it to 100 after attempting upload.
+      // Real progress tracking for supabase.storage.upload is more complex and might require xhr if not using their resumable upload features.
+      // For now, this is a placeholder for visual feedback.
+      let currentProgress = 0;
+      const progressInterval = setInterval(() => {
+        currentProgress += 10;
+        if (currentProgress <= 100) {
+            setUploadProgress(currentProgress);
+        } else {
+            clearInterval(progressInterval);
+        }
+      }, 100);
+
+
+      if (uploadError) {
+        console.error("Upload failed:", uploadError);
+        setIsUploading(false);
+        setUploadProgress(null);
+        clearInterval(progressInterval);
+        form.setError("coverImageUrl", { type: "manual", message: `Image upload failed: ${uploadError.message}. Please try again.` });
+        return; // Stop submission
+      }
+
+      const { data: publicUrlData } = supabase.storage
+        .from('article_covers')
+        .getPublicUrl(filePath);
+
+      clearInterval(progressInterval);
+      setUploadProgress(100); // Mark as complete
+
+      if (!publicUrlData || !publicUrlData.publicUrl) {
+        console.error("Failed to get public URL");
+        setIsUploading(false);
+        form.setError("coverImageUrl", { type: "manual", message: "Failed to get image public URL after upload." });
+        return; 
+      }
+      finalCoverImageUrl = publicUrlData.publicUrl;
+    }
+
+    // Prepare data for submission (map camelCase form data to snake_case for AppArticleFormData)
+    const submissionData: AppArticleFormData = {
+      ...formData,
+      slug: formData.slug ? slugify(formData.slug) : slugify(formData.title),
+      coverImageUrl: finalCoverImageUrl, // This now has the final URL (either from input or uploaded file)
+    };
+    
+    try {
+        await onSubmit(submissionData);
+    } finally {
+        setIsUploading(false);
+        setUploadProgress(null);
+        if (selectedFile) setSelectedFile(null); // Clear selected file after successful submission
     }
   };
 
@@ -161,7 +181,7 @@ export function ArticleForm({ onSubmit, initialData, isLoading = false }: Articl
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-8">
+      <form onSubmit={form.handleSubmit(handleSubmitWithUpload)} className="space-y-8">
         <FormField
           control={form.control}
           name="title"
@@ -260,20 +280,21 @@ export function ArticleForm({ onSubmit, initialData, isLoading = false }: Articl
               disabled={currentLoadingState}
             />
           </FormControl>
-          <FormDescription>Upload an image (max 5MB) or provide a URL below.</FormDescription>
+          <FormDescription>Upload an image (e.g. JPG, PNG, WEBP, max 5MB recommended) or provide a URL below. Ensure your Supabase bucket 'article_covers' is public or URLs are signed.</FormDescription>
           <FormField
             control={form.control}
-            name="coverImageUrl"
+            name="coverImageUrl" // This is the form field for URL input
             render={({ field }) => (
               <Input 
                 placeholder="Or paste image URL here (e.g., https://example.com/image.png)" 
                 {...field} 
-                disabled={currentLoadingState || !!selectedFile} // Disable if a file is selected
+                disabled={currentLoadingState || !!selectedFile}
                 className="mt-2"
               />
             )}
           />
-          <FormMessage />
+          {/* Display form message for coverImageUrl (URL input) */}
+          <FormMessage>{form.formState.errors.coverImageUrl?.message}</FormMessage>
         </FormItem>
 
         {isUploading && uploadProgress !== null && (
@@ -304,7 +325,6 @@ export function ArticleForm({ onSubmit, initialData, isLoading = false }: Articl
           </div>
         )}
         
-
         <FormField
           control={form.control}
           name="authorName"
@@ -312,7 +332,7 @@ export function ArticleForm({ onSubmit, initialData, isLoading = false }: Articl
             <FormItem>
               <FormLabel>Author Name (Optional)</FormLabel>
               <FormControl>
-                <Input placeholder="Author's name" {...field} disabled={currentLoadingState}/>
+                <Input placeholder="Author's name" {...field} disabled={currentLoadingState} defaultValue="Deepak bagada" />
               </FormControl>
               <FormMessage />
             </FormItem>

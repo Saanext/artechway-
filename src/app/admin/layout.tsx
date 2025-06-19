@@ -3,6 +3,7 @@
 import React, { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/lib/supabase';
 import {
   SidebarProvider,
   Sidebar,
@@ -14,16 +15,14 @@ import {
   SidebarFooter,
   SidebarTrigger,
   SidebarInset,
-} from '@/components/ui/sidebar'; // Assuming this path is correct
+} from '@/components/ui/sidebar'; 
 import Link from 'next/link';
 import { Rocket, LogOut, LayoutDashboard, FilePlus, Lightbulb, Settings, PanelLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { signOut } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+  const { user, loading, isAdmin } = useAuth(); // isAdmin might not be fully utilized here yet
   const router = useRouter();
   const pathname = usePathname();
 
@@ -35,7 +34,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const handleLogout = async () => {
     try {
-      await signOut(auth);
+      await supabase.auth.signOut();
       router.push('/admin/login');
     } catch (error) {
       console.error("Error signing out: ", error);
@@ -51,13 +50,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     );
   }
   
-  // Don't render sidebar for login page
   if (pathname === '/admin/login') {
     return <>{children}</>;
   }
 
   if (!user) {
-     // This case should ideally be covered by the redirect, but as a fallback:
     return (
       <div className="flex items-center justify-center h-screen bg-background">
         <p className="text-lg font-semibold text-foreground">Redirecting to login...</p>
@@ -67,8 +64,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const getInitials = (name: string | null | undefined) => {
     if (!name) return "AD";
-    return name.split(' ').map(n => n[0]).join('').toUpperCase();
+    const nameParts = name.split(' ');
+    if (nameParts.length > 1) {
+      return (nameParts[0][0] + nameParts[nameParts.length - 1][0]).toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
   };
+  
+  const userDisplayName = user.displayName || user.email || "Admin";
+
 
   return (
     <SidebarProvider defaultOpen>
@@ -80,10 +84,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </Link>
           <div className="flex flex-col items-center space-y-2 w-full group-data-[collapsible=icon]:hidden">
             <Avatar className="h-16 w-16">
-              <AvatarImage src={user.photoURL || undefined} alt={user.displayName || "Admin"} />
-              <AvatarFallback>{getInitials(user.displayName)}</AvatarFallback>
+              {/* Supabase user objects don't have photoURL directly like Firebase. Needs to be handled if avatars are stored in Supabase Storage and linked in user_metadata. */}
+              {/* <AvatarImage src={user.photoURL || undefined} alt={userDisplayName} /> */}
+              <AvatarFallback>{getInitials(userDisplayName)}</AvatarFallback>
             </Avatar>
-            <p className="text-sm font-medium text-sidebar-foreground">{user.displayName || user.email}</p>
+            <p className="text-sm font-medium text-sidebar-foreground">{userDisplayName}</p>
             <p className="text-xs text-sidebar-foreground/70">Administrator</p>
           </div>
         </SidebarHeader>
@@ -113,14 +118,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 </SidebarMenuButton>
               </Link>
             </SidebarMenuItem>
-             {/* <SidebarMenuItem>
-              <Link href="/admin/settings" legacyBehavior passHref>
-                <SidebarMenuButton isActive={pathname === '/admin/settings'} tooltip="Settings">
-                  <Settings />
-                  <span>Settings</span>
-                </SidebarMenuButton>
-              </Link>
-            </SidebarMenuItem> */}
           </SidebarMenu>
         </SidebarContent>
         <SidebarFooter className="p-4">

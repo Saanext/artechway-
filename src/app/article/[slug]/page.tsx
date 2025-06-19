@@ -1,5 +1,5 @@
 
-import { getArticleBySlug, getArticles } from '@/lib/firestore';
+import { getArticleBySlug, getArticles } from '@/lib/articles'; // Updated import
 import type { Article } from '@/lib/types';
 import { notFound } from 'next/navigation';
 import Image from 'next/image';
@@ -7,7 +7,7 @@ import ArticleContent from '@/components/blog/ArticleContent';
 import ShareButtons from '@/components/blog/ShareButtons';
 import Summarizer from '@/components/blog/Summarizer';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { CalendarDays, FolderArchive } from 'lucide-react'; // Changed UserCircle to FolderArchive for category
+import { CalendarDays, FolderArchive } from 'lucide-react';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
@@ -19,7 +19,6 @@ interface ArticlePageProps {
   };
 }
 
-// For SEO and metadata
 export async function generateMetadata({ params }: ArticlePageProps) {
   const article = await getArticleBySlug(params.slug);
   if (!article) {
@@ -35,28 +34,27 @@ export async function generateMetadata({ params }: ArticlePageProps) {
     openGraph: {
         title: article.title,
         description: article.excerpt || article.content.substring(0, 160),
-        url: `https://artechway.com/article/${article.slug}`, // Replace with actual domain
+        url: `https://artechway.com/article/${article.slug}`, 
         type: 'article',
-        images: article.coverImageUrl ? [{ url: article.coverImageUrl }] : [],
+        images: article.cover_image_url ? [{ url: article.cover_image_url }] : [],
         article: {
-          publishedTime: article.createdAt.toDate().toISOString(),
-          modifiedTime: article.updatedAt.toDate().toISOString(),
-          authors: article.authorName ? [article.authorName] : [],
-          section: article.category, // Added category here
+          publishedTime: new Date(article.created_at).toISOString(),
+          modifiedTime: new Date(article.updated_at).toISOString(),
+          authors: article.author_name ? [article.author_name] : [],
+          section: article.category,
         },
     },
     twitter: {
         card: 'summary_large_image',
         title: article.title,
         description: article.excerpt || article.content.substring(0, 160),
-        images: article.coverImageUrl ? [article.coverImageUrl] : [],
+        images: article.cover_image_url ? [article.cover_image_url] : [],
     },
   };
 }
 
-// For static site generation
 export async function generateStaticParams() {
-  const articles = await getArticles(50); 
+  const articles = await getArticles(50, true); // Fetch only published for static params
   return articles.map((article) => ({
     slug: article.slug,
   }));
@@ -67,12 +65,12 @@ export const revalidate = 3600;
 export default async function ArticlePage({ params }: ArticlePageProps) {
   const article = await getArticleBySlug(params.slug);
 
-  if (!article) {
+  if (!article || !article.is_published) { // Ensure article is published
     notFound();
   }
 
-  const relatedArticles = (await getArticles(4, true)) // Ensure related articles are published
-                            .filter(a => a.id !== article.id && a.category === article.category) // prefer same category
+  const relatedArticles = (await getArticles(4, true)) 
+                            .filter(a => a.id !== article.id && a.category === article.category)
                             .slice(0,3); 
 
   const getInitials = (name: string | null | undefined) => {
@@ -98,20 +96,20 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-muted-foreground">
             <div className="flex items-center">
               <Avatar className="h-8 w-8 mr-2">
-                <AvatarImage src={undefined} alt={article.authorName || "Artechway"} />
-                <AvatarFallback>{getInitials(article.authorName)}</AvatarFallback>
+                <AvatarImage src={undefined} alt={article.author_name || "Artechway"} />
+                <AvatarFallback>{getInitials(article.author_name)}</AvatarFallback>
               </Avatar>
-              <span>{article.authorName || 'Artechway Team'}</span>
+              <span>{article.author_name || 'Artechway Team'}</span>
             </div>
             <div className="flex items-center">
               <CalendarDays className="h-4 w-4 mr-1.5" />
-              <span>Published on {format(article.createdAt.toDate(), 'MMMM dd, yyyy')}</span>
+              <span>Published on {format(new Date(article.created_at), 'MMMM dd, yyyy')}</span>
             </div>
           </div>
-          {article.coverImageUrl && (
+          {article.cover_image_url && (
             <div className="relative w-full aspect-video rounded-lg overflow-hidden mt-6 shadow-md">
               <Image
-                src={article.coverImageUrl || "https://placehold.co/1200x675.png"}
+                src={article.cover_image_url || "https://placehold.co/1200x675.png"}
                 alt={article.title}
                 fill
                 style={{ objectFit: 'cover' }}
@@ -147,4 +145,3 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
     </div>
   );
 }
-

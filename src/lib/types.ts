@@ -1,18 +1,28 @@
 
-import type { Timestamp } from 'firebase/firestore';
-
 export interface Article {
-  id: string; // Firestore document ID
+  id: string; // Supabase uses UUID
   title: string;
-  slug: string; // URL-friendly, unique identifier
+  slug: string; // unique
   content: string; // HTML or Markdown content
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
-  category: "AI" | "Web Development" | "Social Media Marketing" | string; // Add other categories as needed, or keep strict
+  category: "AI" | "Web Development" | "Social Media Marketing" | string;
+  author_name?: string;
+  excerpt?: string;
+  is_published?: boolean;
+  cover_image_url?: string;
+  created_at: string; // ISO string from Supabase
+  updated_at: string; // ISO string from Supabase
+}
+
+// Used for form data, can keep camelCase for easier handling in forms
+export interface ArticleFormData {
+  title: string;
+  slug?: string;
+  content: string;
+  category: Article['category'];
   authorName?: string;
-  excerpt?: string; 
+  excerpt?: string;
   isPublished?: boolean;
-  coverImageUrl?: string;
+  coverImageUrl?: string; // Can be a URL string or a File object during upload
 }
 
 export interface UserProfile {
@@ -21,4 +31,3 @@ export interface UserProfile {
   displayName: string | null;
   // Add any other user-specific fields you might need
 }
-

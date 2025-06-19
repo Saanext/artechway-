@@ -1,17 +1,19 @@
+
 "use client";
 
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
-import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { supabase } from '@/lib/supabase';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 import type { UserProfile } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton'; // For loading state
 
 interface AuthContextType {
   user: UserProfile | null;
   loading: boolean;
+  isAdmin: boolean; // Simple check, could be more robust with roles
 }
 
-export const AuthContext = createContext<AuthContextType>({ user: null, loading: true });
+export const AuthContext = createContext<AuthContextType>({ user: null, loading: true, isAdmin: false });
 
 interface AuthProviderProps {
   children: ReactNode;
@@ -20,26 +22,52 @@ interface AuthProviderProps {
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser: FirebaseUser | null) => {
-      if (firebaseUser) {
-        setUser({
-          uid: firebaseUser.uid,
-          email: firebaseUser.email,
-          displayName: firebaseUser.displayName,
-        });
+    const getSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        const profile: UserProfile = {
+          uid: session.user.id,
+          email: session.user.email || null,
+          displayName: session.user.user_metadata?.full_name || session.user.email || null,
+        };
+        setUser(profile);
+        // Basic admin check, customize as needed (e.g. check a custom claim or a 'roles' table)
+        setIsAdmin(!!session.user.email); // Example: any logged in user is admin
       } else {
         setUser(null);
+        setIsAdmin(false);
       }
       setLoading(false);
+    };
+    
+    getSession();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session?.user) {
+        const profile: UserProfile = {
+          uid: session.user.id,
+          email: session.user.email || null,
+          displayName: session.user.user_metadata?.full_name || session.user.email || null,
+        };
+        setUser(profile);
+        setIsAdmin(!!session.user.email); 
+      } else {
+        setUser(null);
+        setIsAdmin(false);
+      }
+      setLoading(false); // Ensure loading is set to false after initial check or change
     });
 
-    return () => unsubscribe();
+    return () => {
+      authListener?.subscription.unsubscribe();
+    };
   }, []);
 
   if (loading) {
-    // Basic full-page skeleton loader
     return (
       <div className="flex flex-col min-h-screen">
         <header className="bg-background shadow-md sticky top-0 z-50">
@@ -70,7 +98,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
 
   return (
-    <AuthContext.Provider value={{ user, loading }}>
+    <AuthContext.Provider value={{ user, loading, isAdmin }}>
       {children}
     </AuthContext.Provider>
   );
