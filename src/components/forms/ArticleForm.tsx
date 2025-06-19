@@ -44,7 +44,7 @@ export function ArticleForm({ onSubmit, initialData, isLoading = false }: Articl
       slug: initialData?.slug || "",
       content: initialData?.content || "",
       category: initialData?.category || categories[0], // Default to first category or existing
-      authorName: initialData?.authorName || "Artechway Admin",
+      authorName: initialData?.authorName || "Deepak bagada",
       excerpt: initialData?.excerpt || "",
       isPublished: initialData?.isPublished === undefined ? true : initialData.isPublished,
       coverImageUrl: initialData?.coverImageUrl || "",
