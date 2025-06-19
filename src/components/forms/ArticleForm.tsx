@@ -111,20 +111,16 @@ export function ArticleForm({ onSubmit, initialData, isLoading = false }: Articl
       setIsUploading(true);
       setUploadProgress(0);
       const fileName = `${Date.now()}_${selectedFile.name}`;
-      const filePath = `article_covers/${fileName}`;
+      const filePath = `public/${fileName}`; // Supabase storage paths often don't need a leading 'public' if the bucket itself defines that structure. Adjust if your bucket has subfolders.
 
       const { error: uploadError } = await supabase.storage
-        .from('article_covers') // Make sure this bucket exists and has public access or use signed URLs
+        .from('dbarticles') // Updated bucket name
         .upload(filePath, selectedFile, {
           cacheControl: '3600',
           upsert: false,
           //contentType: selectedFile.type // Supabase client usually infers this
         });
       
-      // Simulating progress for Supabase (actual progress needs event listeners if supported or custom logic)
-      // For simplicity, we'll just set it to 100 after attempting upload.
-      // Real progress tracking for supabase.storage.upload is more complex and might require xhr if not using their resumable upload features.
-      // For now, this is a placeholder for visual feedback.
       let currentProgress = 0;
       const progressInterval = setInterval(() => {
         currentProgress += 10;
@@ -146,7 +142,7 @@ export function ArticleForm({ onSubmit, initialData, isLoading = false }: Articl
       }
 
       const { data: publicUrlData } = supabase.storage
-        .from('article_covers')
+        .from('dbarticles') // Updated bucket name
         .getPublicUrl(filePath);
 
       clearInterval(progressInterval);
@@ -280,7 +276,7 @@ export function ArticleForm({ onSubmit, initialData, isLoading = false }: Articl
               disabled={currentLoadingState}
             />
           </FormControl>
-          <FormDescription>Upload an image (e.g. JPG, PNG, WEBP, max 5MB recommended) or provide a URL below. Ensure your Supabase bucket 'article_covers' is public or URLs are signed.</FormDescription>
+          <FormDescription>Upload an image (e.g. JPG, PNG, WEBP, max 5MB recommended) or provide a URL below. Ensure your Supabase bucket 'dbarticles' is public or URLs are signed.</FormDescription>
           <FormField
             control={form.control}
             name="coverImageUrl" // This is the form field for URL input
@@ -370,3 +366,5 @@ export function ArticleForm({ onSubmit, initialData, isLoading = false }: Articl
     </Form>
   );
 }
+
+    
